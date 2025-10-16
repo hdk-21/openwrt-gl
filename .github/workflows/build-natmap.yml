@@ -72,6 +72,7 @@ jobs:
 
       - name: Prepare feeds
         run: |
+          cd openwrt-18.06
           chmod +x ./scripts/feeds
           ./scripts/feeds update -a
           ./scripts/feeds install -a
