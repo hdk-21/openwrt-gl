@@ -85,7 +85,7 @@ jobs:
         run: |
           cd openwrt-18.06
           make defconfig
-          make package/natmap/compile V=s
+          make package/natmap/compile V=s FORCE=1
 
       - name: Upload natmap ipk
         uses: actions/upload-artifact@v4
