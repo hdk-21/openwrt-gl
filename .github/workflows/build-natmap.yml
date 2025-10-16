@@ -83,6 +83,7 @@ jobs:
 
       - name: Build natmap
         run: |
+          cd openwrt-18.06
           make defconfig
           make package/natmap/compile V=s
 
