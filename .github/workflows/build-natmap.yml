@@ -1,34 +1,91 @@
-name: Build natmap
+name: Build natmap for GL.iNet OpenWrt
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout natmap
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          repository: heiher/natmap
-          ref: main
 
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake git
+          sudo apt-get install -y build-essential clang flex bison g++ gawk \
+            gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
+            python3-distutils rsync unzip zlib1g-dev file wget
 
-      - name: Build
+      - name: Download GL.iNet OpenWrt SDK
         run: |
-          cmake -B build
-          cmake --build build -j$(nproc)
+          wget https://github.com/gl-inet/sdk/releases/download/v22.03.5/openwrt-sdk-xxx.tar.xz
+          tar -xf openwrt-sdk-xxx.tar.xz
+          mv openwrt-sdk-* openwrt-sdk
 
-      - name: Upload artifact
+      - name: Add natmap package
+        run: |
+          cd openwrt-sdk/package
+          git clone https://github.com/heiher/natmap.git natmap
+          # 写一个 OpenWrt package Makefile
+          cat > natmap/Makefile <<'EOF'
+          include \$(TOPDIR)/rules.mk
+
+          PKG_NAME:=natmap
+          PKG_VERSION:=git
+          PKG_RELEASE:=1
+
+          PKG_SOURCE_PROTO:=git
+          PKG_SOURCE_URL:=https://github.com/heiher/natmap.git
+          PKG_SOURCE_DATE:=2025-01-01
+          PKG_SOURCE_VERSION:=HEAD
+          PKG_MIRROR_HASH:=skip
+
+          PKG_BUILD_DIR:=\$(BUILD_DIR)/\$(PKG_NAME)
+
+          include \$(INCLUDE_DIR)/package.mk
+
+          define Package/natmap
+            SECTION:=net
+            CATEGORY:=Network
+            TITLE:=NATMap - NAT traversal port mapping tool
+            URL:=https://github.com/heiher/natmap
+          endef
+
+          define Package/natmap/description
+           NATMap is a tool to establish TCP/UDP port mapping from ISP NAT public address
+           to local private address, useful for NAT traversal.
+          endef
+
+          define Build/Compile
+           \$(MAKE) -C \$(PKG_BUILD_DIR) \
+             CC="\$(TARGET_CC)" \
+             LD="\$(TARGET_CC)" \
+             CFLAGS="\$(TARGET_CFLAGS)" \
+             LDFLAGS="\$(TARGET_LDFLAGS)"
+          endef
+
+          define Package/natmap/install
+           \$(INSTALL_DIR) \$(1)/usr/bin
+           \$(INSTALL_BIN) \$(PKG_BUILD_DIR)/natmap \$(1)/usr/bin/
+          endef
+
+          \$(eval \$(call BuildPackage,natmap))
+          EOF
+
+      - name: Build natmap
+        run: |
+          cd openwrt-sdk
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          make defconfig
+          make package/natmap/compile V=s
+
+      - name: Upload natmap ipk
         uses: actions/upload-artifact@v4
         with:
-          name: natmap
-          path: build/natmap
+          name: natmap-ipk
+          path: openwrt-sdk/bin/packages/*/base/natmap_*.ipk
