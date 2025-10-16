@@ -73,6 +73,10 @@ jobs:
       - name: Prepare feeds
         run: |
           cd openwrt-18.06
+          sed -i 's,https://git.openwrt.org/feed/packages.git,https://github.com/openwrt/packages.git,' feeds.conf.default
+          sed -i 's,https://git.openwrt.org/project/luci.git,https://github.com/openwrt/luci.git,' feeds.conf.default
+          sed -i 's,https://git.openwrt.org/feed/routing.git,https://github.com/openwrt/routing.git,' feeds.conf.default
+          sed -i 's,https://git.openwrt.org/feed/telephony.git,https://github.com/openwrt/telephony.git,' feeds.conf.default
           chmod +x ./scripts/feeds
           ./scripts/feeds update -a
           ./scripts/feeds install -a
