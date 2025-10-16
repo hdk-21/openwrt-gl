@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout
+      - name: Checkout natmap
         uses: actions/checkout@v4
         with:
           repository: heiher/natmap
@@ -20,24 +20,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential autoconf automake libtool \
-            pkg-config git
+          sudo apt-get install -y build-essential cmake git
 
       - name: Build
         run: |
-          ./autogen.sh || true
-          ./configure
-          make -j$(nproc)
-
-      - name: Package artifact
-        run: |
-          mkdir -p artifact
-          cp natmap artifact/ || true
-          tar -czf natmap-build.tgz artifact
+          cmake -B build
+          cmake --build build -j$(nproc)
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: natmap
-          path: natmap-build.tgz
+          path: build/natmap
